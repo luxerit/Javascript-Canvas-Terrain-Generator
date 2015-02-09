@@ -1,7 +1,7 @@
 var m = new MersenneTwister(123);
 
 
-function generateTerrainMap(mapDimension, unitSize, roughness, seed) {
+function generateTerrainMap(mapDimension, unitSize, roughness, seed, ctx) {
 
 	m = new MersenneTwister(seed);
 	
@@ -15,12 +15,12 @@ function generateTerrainMap(mapDimension, unitSize, roughness, seed) {
 		i = 0,
 		j = 0;
 
-		for (i = 0; i < d1; i += 1) {
+		for (i = 0; i < d1; ++i) {
 			x[i] = new Array(d2);
 		}
 
-		for (i=0; i < d1; i += 1) {
-			for (j = 0; j < d2; j += 1) {
+		for (i=0; i < d1; ++i) {
+			for (j = 0; j < d2; ++j) {
 				x[i][j] = 0;
 			}
 		}
@@ -89,89 +89,92 @@ function generateTerrainMap(mapDimension, unitSize, roughness, seed) {
 //		mapDimension /= 4;
 		midpointDisplacment(mapDimension);
 	}
-
-	// Workhorse of the terrain generation.
-	function midpointDisplacment(dimension){
-		var newDimension = dimension / 2,
-			spacer = 10,
-			limit = spacer,
-			top, topRight, topLeft, bottom, bottomLeft, bottomRight, right, left, center,
-			i, j;
+	
+	function midpointDisplacment(d) {
+		var newDimension = d/2,
+			step = newDimension/2;
 
 		if (newDimension > unitSize) {
-			for(i = newDimension; i <= mapDimension; i += newDimension){
-				for(j = newDimension; j <= mapDimension; j += newDimension){
-					x = i - (newDimension / 2);
-					y = j - (newDimension / 2);
-
-					topLeft = map[i - newDimension][j - newDimension];
-					topRight = map[i][j - newDimension];
-					bottomLeft = map[i - newDimension][j];
-					bottomRight = map[i][j];
-
-					// Center
-					map[x][y] = normalize((topLeft + topRight + bottomLeft + bottomRight) / 4 + displace(dimension));
-//					map[x][y] = normalize(map[x][y]);
-					center = map[x][y];
-					
-					if (!(x > limit && x < mapDimension-limit)) continue;
-					if (!(y > limit && y < mapDimension-limit)) continue;
-
-					// Top
-					if ((j - newDimension) > spacer) {
-						if(j - dimension + (newDimension / 2) > 0){
-							map[x][j - newDimension] = (topLeft + topRight + center + map[x][j - dimension + (newDimension / 2)]) / 4 + displace(dimension);;
-						}else{
-							map[x][j - newDimension] = (topLeft + topRight + center) / 3 + displace(dimension);
-						}
-
-						map[x][j - newDimension] = normalize(map[x][j - newDimension]);
-					}
-
-					// Bottom
-					if (j < mapDimension - spacer) {
-						if(j + (newDimension / 2) < mapDimension){
-							map[x][j] = (bottomLeft + bottomRight + center + map[x][j + (newDimension / 2)]) / 4+ displace(dimension);
-						}else{
-							map[x][j] = (bottomLeft + bottomRight + center) / 3+ displace(dimension);
-						}
-
-						map[x][j] = normalize(map[x][j]);
-					}
-
-
-					//Right
-					if (i < mapDimension - spacer) {
-						if(i + (newDimension / 2) < mapDimension){
-							map[i][y] = (topRight + bottomRight + center + map[i + (newDimension / 2)][y]) / 4+ displace(dimension);
-						}else{
-							map[i][y] = (topRight + bottomRight + center) / 3+ displace(dimension);
-						}
-
-						map[i][y] = normalize(map[i][y]);
-					}
-
-					// Left
-					if ((i - newDimension) > spacer) {
-						if(i - dimension + (newDimension / 2) > 0){
-							map[i - newDimension][y] = (topLeft + bottomLeft + center + map[i - dimension + (newDimension / 2)][y]) / 4 + displace(dimension);;
-						}else{
-							map[i - newDimension][y] = (topLeft + bottomLeft + center) / 3+ displace(dimension);
-						}
-
-						map[i - newDimension][y] = normalize(map[i - newDimension][y]);
-					}
+		
+			for (var i = step; i < mapDimension; i += newDimension) {
+				for (var j = step; j < mapDimension; j += newDimension) {
+					diamondDisplacment(i, j, newDimension);
 				}
 			}
+			
 			midpointDisplacment(newDimension);
+		}
+	}
+
+	/**
+	 * x, y - center point coordinates
+	 * dimension - square dimension
+	*/
+	function diamondDisplacment(x, y, dimension) {
+		var newDimension = dimension / 2,
+			left = x - newDimension,
+			top = y - newDimension,
+			right = x + newDimension,
+			bottom = y + newDimension,
+
+			topLeft = map[left][top],
+			topRight = map[right][top],
+			bottomLeft = map[left][bottom],
+			bottomRight = map[right][bottom],
+			
+			spacer = 0,
+			
+			displacer = newDimension * 4;
+
+		// Center
+		map[x][y] = normalize((topLeft + topRight + bottomLeft + bottomRight) / 4 + displace(displacer));
+		var center = map[x][y];
+		
+		// Top
+		if (top > spacer) {
+			if ((top - newDimension) > 0) {
+				map[x][top] = (topLeft + topRight + center + map[x][top-newDimension]) / 4 + displace(displacer);
+			} else {
+				map[x][top] = (topLeft + topRight + center) / 3 + displace(displacer);
+			}
+			map[x][top] = normalize(map[x][top]);
+		}
+		
+		// Bottom
+		if (bottom < mapDimension - spacer) {
+			if ((bottom + newDimension) < mapDimension) {
+				map[x][bottom] = (bottomLeft + bottomRight + center + map[x][bottom+newDimension]) / 4 + displace(displacer);
+			} else {
+				map[x][bottom] = (bottomLeft + bottomRight + center) / 3 + displace(displacer);
+			}
+			map[x][bottom] = normalize(map[x][bottom]);
+		}
+		
+		// Right
+		if (right < mapDimension - spacer) {
+			if ((right + newDimension) < mapDimension) {
+				map[right][y] = (topRight + bottomRight + center + map[right + newDimension][y]) / 4 + displace(displacer);
+			} else {
+				map[right][y] = (topRight + bottomRight + center) / 3 + displace(displacer);
+			}
+			map[right][y] = normalize(map[right][y]);
+		}
+
+		// Left
+		if (left > spacer) {
+			if ((left - newDimension) > 0) {
+				map[left][y] = (topLeft + bottomLeft + center + map[left - newDimension][y]) / 4 + displace(displacer);
+			} else {
+				map[left][y] = (topLeft + bottomLeft + center) / 3 + displace(displacer);
+			}
+			map[left][y] = normalize(map[left][y]);
 		}
 	}
 
 	// Random function to offset the center
 	function displace(num){
 		var max = num / (mapDimension + mapDimension) * roughness;
-//		return (Math.random(1.0)- 0.5) * max;
-		return (m.random()- 0.5) * max;
+		return (m.random()- 0.5) * max; 
 	}
 
 	// Normalize the value to make sure its within bounds

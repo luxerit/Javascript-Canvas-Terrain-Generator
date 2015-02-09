@@ -84,6 +84,8 @@ function terrainGeneration(){
         mapCanvas.height = mapDimension;
 
         map = generateTerrainMap(mapDimension, unitSize, roughness, seed);
+		
+//		console.log(map[256]);
 
         // Draw everything after the terrain vals are generated
         drawMap(mapDimension, "canvas", map, mapType, water, sand, grass, mnt, rock);
